@@ -24,10 +24,11 @@ def estimate_atmospheric_light(image, dark_channel):
 
 def defog_image(image):
     """Defog the input image using improved dark channel prior."""
-    I = image.astype(float)
+    I = (image).astype(np.uint8)
     dark_channel_img = dark_channel(I)
     A = estimate_atmospheric_light(I, dark_channel_img)
     omega = 0.95
+    st.write(f"Dynamic Omega: {omega}")
     t = 1 - omega * (dark_channel_img / np.max(A))
     t = np.clip(t, 0.1, 1)
     t = cv2.bilateralFilter(t.astype(np.float32), 5, 0.1, 0.1)
