@@ -39,7 +39,7 @@ def defog_image(image):
     return J, dark_channel_img, t
 
 def detect_lines(cropped_edges, image, min_distance=100):
-    """Detect lines, filter, sort, and reflect lines using an average axis if needed."""
+    """Detect lines, filter, sort, and reflect lines using the middle axis of the image if needed."""
     lines = cv2.HoughLinesP(cropped_edges, rho=1, theta=np.pi / 180, threshold=50, minLineLength=60, maxLineGap=300)
     line_image = np.zeros_like(image)
     left_line_image = np.zeros_like(image)
@@ -104,13 +104,15 @@ def detect_lines(cropped_edges, image, min_distance=100):
         for _, _, _, (x1, y1, x2, y2) in right_lines:
             cv2.line(right_line_image, (x1, y1), (x2, y2), (0, 0, 255), 5)
 
-        # Calculate the average axis from filtered lines
-        if filtered_lines:
-            average_axis = int(np.mean([(x1 + x2) / 2 for _, _, _, (x1, _, x2, _) in filtered_lines]))
-        else:
-            average_axis = mid_x  # Default to mid_x if no lines
+        # If no lanes are found
+        if not left_lines and not right_lines:
+            print("No lanes found.")
+        elif not left_lines:
+            print("No left lanes found.")
+        elif not right_lines:
+            print("No right lanes found.")
 
-        # Reflect a line based on average axis
+        # Reflect a line based on the middle axis of the image
         def reflect_line(x1, y1, x2, y2, axis):
             x1_reflected = 2 * axis - x1
             x2_reflected = 2 * axis - x2
@@ -118,17 +120,17 @@ def detect_lines(cropped_edges, image, min_distance=100):
 
         # Handle missing lines with reflections
         if not left_lines and right_lines:
-            # Reflect the longest right line
+            # Reflect the longest right line along the middle axis
             _, _, _, (x1, y1, x2, y2) = max(right_lines, key=lambda l: l[2])
             cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
-            reflected = reflect_line(x1, y1, x2, y2, average_axis)
+            reflected = reflect_line(x1, y1, x2, y2, mid_x)
             cv2.line(line_image, (reflected[0], reflected[1]), (reflected[2], reflected[3]), (0, 255, 0), 5)
 
         elif not right_lines and left_lines:
-            # Reflect the longest left line
+            # Reflect the longest left line along the middle axis
             _, _, _, (x1, y1, x2, y2) = max(left_lines, key=lambda l: l[2])
             cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
-            reflected = reflect_line(x1, y1, x2, y2, average_axis)
+            reflected = reflect_line(x1, y1, x2, y2, mid_x)
             cv2.line(line_image, (reflected[0], reflected[1]), (reflected[2], reflected[3]), (0, 255, 0), 5)
 
         # Draw optimal pair of lines if both sets are available
@@ -154,13 +156,10 @@ def detect_lines(cropped_edges, image, min_distance=100):
                 cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
                 cv2.line(line_image, (x3, y3), (x4, y4), (0, 255, 0), 5)
 
+    else:
+        print("No lines detected.")
+
     return line_image, left_line_image, right_line_image
-
-
-
-
-
-
 
 def detect_lanes(image):
     """Detect lanes in a defogged image while filtering out vertical lines."""
